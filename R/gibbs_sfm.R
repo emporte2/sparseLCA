@@ -17,10 +17,17 @@
 #'
 #' @export
 lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
-                         prior.list, tuning.list, Rvec=NULL, permute=TRUE)
+                         prior.list, tuning.list, Rvec=NULL, permute=TRUE, order.gamma=FALSE,
+                         update.theta=TRUE,update.Sigma=TRUE,update.lambda=TRUE,
+                         update.gamma=TRUE, update.e0=TRUE)
 {
   N <- nrow(YY)
   J <- ncol(YY)
+
+  if(permute & order.gamma)
+  {
+    stop("Only one of permute and order.gamma can be TRUE.")
+  }
 
   # create truncation set for data YY
   A <- matrix(-Inf,nrow=N,ncol=J)
@@ -60,17 +67,46 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
   Sigma.inv.current <- array(NA, dim=c(J,J,C))
   for(c in 1:C)
   {
-    Sigma.inv.current[,,c] <- diag(rep(1,J))
+    Sigma.inv.current[,,c] <- diag(rep(1,J)) # identity is default value
   }
   Sigma.current <- array(NA, dim=c(J,J,C))
   for(c in 1:C)
   {
     Sigma.current[,,c] <- Sigma.inv.current[,,c]
   }
-  e0.current <- rgamma(1,ae.0, rate=ae.0*C)
+
+  if(is.null(prior.list$e0))
+  {
+  e0.current.s <- c(rgamma(1,ae.0, rate=ae.0*C),0)
+  e0.current <- e0.current.s[1]
+  } else{
+    e0.current.s <- c(1/C,0)
+    e0.current <- e0.current.s[1]
+  }
+
+  if(!update.gamma)
+  {
+    gamma.current <- rep(1/C,C)
+  }
+
+
   theta.current <- matrix(rnorm(J*C),nrow=C,ncol=J)
+  if(!update.theta)
+  {
+    theta.current <- matrix(rep(qnorm(apply(YY,2,mean)),C),nrow=C,ncol=J,byrow=TRUE)
+  }
   ystar.current <- matrix(rnorm(N*J),nrow=N,ncol=J)
+
+  if(!is.null(prior.list$lambda))
+  {
+    lambda.current <- prior.list$lambda
+    Lambda.temp <- diag(sqrt(lambda.current))
+    B0.current <- Lambda.temp%*%diag(Rvec)%*%Lambda.temp
+    B0.current <- diag(Rvec)
+  } else{
   B0.current <- diag(Rvec)
+  lambda.current <-rep(1,J)
+  }
 
   ## add everything else
   it <- 1
@@ -88,6 +124,8 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
       ystar.current[i,] <- ystar
     }
 
+    if(update.theta)
+    {
     # update theta
     theta.current <- update_theta_ind_mcmc(ystar.current,cv.current, C, Sigma.inv.current,
                                            mu.current, B0.current) # takes precision matrix
@@ -96,31 +134,48 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
     {
       theta.current <- theta.current[sample(1:C,C),]
     }
+    }
     # could write a function here to transform thetas into pi's for FYI
 
+    if(update.gamma)
+    {
     # update gamma
     gamma.current <- update_eta(C, cv.current, e0.current[1])
+    if(order.gamma)
+    {
+      gamma.current <- sort(gamma.current)
+    }
+    }
 
     # update C - latent allocations
     cv.current <- sample_S_mvn_mcmc(ystar.current,C, theta.current,Sigma.current, gamma.current)
-    #cv.current <- update_allocation.mcmc(YY, pia.current, gamma.current)
     nv.current <- count_classes(cv.current,C)
     cplus.current <- sum(nv.current>0)
+
     # update B matrix - coming soon
+    if(update.lambda)
+    {
     lambda.current <- update_lambda(theta.current, mu.current, C, Rvec, nu1, nu2)
     Lambda <- diag(sqrt(lambda.current))
     B0.current <- Lambda%*%diag(Rvec)%*%Lambda
+    }
 
-    # update Sigma - coming soon
+    if(update.Sigma)
+    {
+    # update Sigma
     Sigma.inv.current <- update_Sigma_ind_mcmc(ystar.current, cv.current,C, theta.current, d0, D0)
     for(c in 1:C)
     {
       Sigma.current[,,c] <- solve(Sigma.inv.current[,,c])
     }
+    }
 
+    if(update.e0)
+    {
     # update e0
     e0.current.s <- update_e0(e0.current, gamma.current, C, delta=delta.e0, ae.0, be.0)
     e0.current <- e0.current.s[1]
+    }
 
     if(it2 > nburn)
     {
