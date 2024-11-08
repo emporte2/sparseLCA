@@ -40,7 +40,7 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
   #B0 <- prior.list$B0
   #e0 <- prior.list$e
   ae.0 <- prior.list$ae
-  be.0 <- ae.0*C
+  be.0 <- ae.0*C^2 # originally ae.0*C: testing a higher b
   nu1 <- prior.list$nu1
   nu2 <- prior.list$nu2
   delta.e0 <- tuning.list$delta
@@ -77,7 +77,7 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
 
   if(is.null(prior.list$e0))
   {
-  e0.current.s <- c(rgamma(1,ae.0, rate=ae.0*C),0)
+  e0.current.s <- c(rgamma(1,ae.0, rate=be.0),0)
   e0.current <- e0.current.s[1]
   } else{
     e0.current.s <- c(1/C,0)
@@ -147,10 +147,16 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
     }
     }
 
+
+    if(sum(is.na(gamma.current))>0){stop('na in gamma.current')}
+    if(sum(is.na(theta.current))>0){stop('na in theta.current')}
+    if(sum(is.na(ystar.current))>0){stop('na in ystar.current')}
+
     # update C - latent allocations
     cv.current <- sample_S_mvn_mcmc(ystar.current,C, theta.current,Sigma.current, gamma.current)
     nv.current <- count_classes(cv.current,C)
     cplus.current <- sum(nv.current>0)
+    if(sum(is.na(cv.current))>0){stop('na in cv.current')}
 
     # update B matrix - coming soon
     if(update.lambda)
@@ -181,6 +187,9 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
     {
       if(it%%nthin==0)
       {
+
+        cat("iteration:",it2,"\n")
+
         c.samples[it/nthin,] <- cv.current
         gamma.samples[it/nthin,] <- gamma.current
         pi.samples[it/nthin,,] <- pnorm(theta.current)

@@ -235,7 +235,10 @@ arma::mat update_class_probs_mvn_cp(const arma::mat Y,
   arma::mat fm1(N,KK); fm1.zeros();
   arma::mat fm2(N,KK); fm2.zeros();
   arma::mat oneM(N,1); oneM.ones();
-  fm1 = log_conditional_likelihood_mvn_cp(Y, KK,current_theta,current_Sigma)  + oneM*log(etav.t());
+  double eps = 1e-16;
+  //Rcout << "eta : " << etav.t() << "\n";
+  //Rcout << "log eta : " << log(etav.t()+eps) << "\n";
+  fm1 = log_conditional_likelihood_mvn_cp(Y, KK,current_theta,current_Sigma)  + oneM*log(etav.t()+eps);
 
   for( int i=0; i < N; i++)
   {
@@ -400,13 +403,15 @@ double log_e0_gamma_ratio(double e0, double e0_old, arma::vec gamma,  const int 
 {
   // log p(gamma | e0); eq 10 SFM 2016
   double out=0;
+  const double eps=1e-16;
   out += lgamma(Kbig*e0) -Kbig*lgamma(e0) +Kbig*lgamma(e0_old)-lgamma(Kbig*e0_old);
   double lnum = 0; double ldenom=0;
   for(int k=0; k<Kbig; k++)
   {
-    lnum += (e0-1)*log(gamma(k));
-    ldenom += (e0_old-1)*log(gamma(k));
+    lnum += (e0-1)*log(gamma(k)+eps);
+    ldenom += (e0_old-1)*log(gamma(k)+eps);
   }
+
   return(out+lnum-ldenom);
 }
 
