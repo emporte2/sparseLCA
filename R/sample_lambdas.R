@@ -15,8 +15,12 @@
 update_lambda <- function(theta.current, mu0, C, Rvec, nu1, nu2){
   J <- length(Rvec)
   avec <- rep(2*nu2, J)
-  bvec <- apply((theta.current-mu0)^2/Rvec^2, 2, sum)
   Pc <- nu1 - C/2
+
+bvec <- rep(NA, J)
+  for(j in 1:J){
+    bvec[j] <- sum(((theta.current[,j] - mu0[j])^2)/(Rvec[j]^2))
+  }
 
   m.arg <- sqrt(avec/bvec)
   s.arg <- 1/bvec
