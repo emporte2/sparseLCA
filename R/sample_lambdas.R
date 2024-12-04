@@ -1,6 +1,6 @@
 #### Sample from full conditional of shrinkage factors
 #### LCA project
-#### September 2024
+#### December 2024
 #### Erica M. Porter
 
 # theta.current is a CxJ matrix of current component means
@@ -9,24 +9,26 @@
 # Rvec is a Jx1 vector of ranges for the items (fixed at 1 for now)
 # nu1 and nu2 are fixed hyperparameters for the shrinkage prior
 
-#' @importFrom rmutil rginvgauss
+#' @importFrom GeneralizedHyperbolic rgig
 #'
 
 update_lambda <- function(theta.current, mu0, C, Rvec, nu1, nu2){
   J <- length(Rvec)
+  
+lambda.sample <- rep(NA,J)
+  
   avec <- rep(2*nu2, J)
   Pc <- nu1 - C/2
-
-bvec <- rep(NA, J)
+  
+  bvec <- rep(NA, J)
   for(j in 1:J){
     bvec[j] <- sum(((theta.current[,j] - mu0[j])^2)/(Rvec[j]^2))
   }
-
-  m.arg <- sqrt(avec/bvec)
-  s.arg <- 1/bvec
-  f.arg <- Pc
-
-  lambda.sample <- rmutil::rginvgauss(n=J, m=m.arg, s=s.arg, f=f.arg)
+  
+  for(j in 1:J){
+    param <- c(avec[j], bvec[j], Pc)
+    lambda.sample[j] <- rgig(1, param=param)
+  }
 
   return(lambda.sample)
 }
