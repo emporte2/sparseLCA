@@ -14,20 +14,20 @@
 
 update_lambda <- function(theta.current, mu0, C, Rvec, nu1, nu2){
   J <- length(Rvec)
-  
+
 lambda.sample <- rep(NA,J)
-  
+
   avec <- rep(2*nu2, J)
   Pc <- nu1 - C/2
-  
+
   bvec <- rep(NA, J)
   for(j in 1:J){
     bvec[j] <- sum(((theta.current[,j] - mu0[j])^2)/(Rvec[j]^2))
   }
-  
+
   for(j in 1:J){
     param <- c(avec[j], bvec[j], Pc)
-    lambda.sample[j] <- rgig(1, param=param)
+    lambda.sample[j] <- GeneralizedHyperbolic::rgig(1, param=param)
   }
 
   return(lambda.sample)

@@ -13,6 +13,7 @@
 #'
 #' @importFrom tmvtnorm rtmvnorm
 #' @importFrom Rcpp evalCpp
+#' @importFrom GeneralizedHyperbolic rgig
 #' @useDynLib sparselca
 #'
 #' @export
@@ -188,7 +189,7 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
       if(it%%nthin==0)
       {
 
-        cat("iteration:",it2,"\n")
+        cat("iteration:",it/nthin,"\n")
 
         c.samples[it/nthin,] <- cv.current
         gamma.samples[it/nthin,] <- gamma.current
