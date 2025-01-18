@@ -41,7 +41,13 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
   #B0 <- prior.list$B0
   #e0 <- prior.list$e
   ae.0 <- prior.list$ae
+  if(is.null(prior.list$be))
+  {
   be.0 <- ae.0*C^2 # originally ae.0*C: testing a higher b
+  } else
+  {
+    be.0 <- prior.list$be
+  }
   nu1 <- prior.list$nu1
   nu2 <- prior.list$nu2
   delta.e0 <- tuning.list$delta
@@ -189,7 +195,7 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
       if(it%%nthin==0)
       {
 
-        cat("iteration:",it/nthin,"\n")
+        #cat("iteration:",it/nthin,"\n")
 
         c.samples[it/nthin,] <- cv.current
         gamma.samples[it/nthin,] <- gamma.current
