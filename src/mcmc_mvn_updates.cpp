@@ -10,60 +10,6 @@ using namespace Rcpp;
 # include "mvn_likelihood.h"
 
 
-// // [[Rcpp::depends(RcppArmadillo)]]
-// // [[Rcpp::export]]
-// arma::field<arma::cube> test_field(int K, int p, int nit)
-// {
-//   arma::field<arma::cube> out(3,1);
-//   arma::cube eta(nit,K,1); eta.fill(0);
-//   arma::cube beta(nit,K,p); beta.fill(1);
-//   arma::cube ssq(nit,1,1); ssq.fill(-999);
-//   out(0,0) = eta; out(1,0)=beta; out(2,0)=ssq;
-//   return(out);
-// }
-
-// [[Rcpp::depends(RcppArmadillo)]]
-arma::vec update_betaj_mcmc(arma::mat yj, const arma::mat Xj,
-                           const int K, const double ssq,
-                           const arma::vec prior_mean,
-                           const arma::mat V_inv)
-{
-  int p = Xj.n_cols; int nj=Xj.n_rows;
-  arma::vec out(p);
-  arma::mat A(p,p); A.fill(0);
-  arma::mat Ainv(p,p);
-  arma::mat S(nj,nj); S.fill(0);
-  arma::vec mu(p); mu.fill(0);
-  S.diag() += 1.0/ssq;
-
-  A=V_inv + Xj.t()*S*Xj;
-  Ainv = inv(A);
-  mu = Ainv*(Xj.t()*S*yj + V_inv*prior_mean);
-  out = mvrnormArma(1, mu, Ainv).row(0).t();
-  return(out);
-}
-
-// [[Rcpp::depends(RcppArmadillo)]]
-arma::mat update_beta_mcmc(arma::vec Y, const arma::mat X,
-                           const int K,
-                           const arma::vec Sv, const double ssq,
-                           const arma::vec prior_mean,
-                           const arma::mat V_inv)
-{
-  int p = X.n_cols;
-  arma::vec nvec(K); nvec = nvec_count(Sv,K);
-  arma::mat out(K,p);
-  for( int k=0; k<K; k++)
-  {
-    arma::uvec ind = find(Sv==k+1);
-    arma::mat Xj(nvec(k),p); Xj=X.rows(ind);
-    arma::vec yj(nvec(k)); yj=Y(ind);
-    out.row(k) = update_betaj_mcmc(yj,Xj,K,ssq,prior_mean,V_inv).t();
-  }
-  return(out);
-}
-
-
 
 // [[Rcpp::depends(RcppArmadillo)]]
 arma::mat update_Sigmaj_mcmc(const arma::mat YP, const arma::vec mu0, const double kappa0,
@@ -278,44 +224,7 @@ arma::vec sample_S_mvn_mcmc(const arma::mat Y,
 }
 
 
-// [[Rcpp::depends(RcppArmadillo)]]
-arma::vec update_thetaj_mcmc(const arma::mat YP, const arma::mat Sigmaj, const arma::vec mu0, const double kappa0)
-{
-  int n = YP.n_rows;
-  int p = YP.n_cols;
-  arma::mat YP_mean(p,1);  YP_mean.fill(0.0);
 
-  arma::vec mu_post(p);  mu_post.fill(-999);
-  double kappa_post = 0; kappa_post= -999;
-
-  if( n ==0 )
-  {
-    mu_post = mu0;
-    kappa_post = kappa0;
-  }
-
-  if( n >0 )
-  {
-    for( int pp = 0; pp < p; pp++)
-    {
-      for( int i = 0; i < n; i ++)
-      {
-        YP_mean(pp,0) += YP(i,pp);
-      }
-
-      YP_mean(pp,0) = YP_mean(pp,0)/n;
-      mu_post(pp) = (kappa0*mu0(pp) + n*YP_mean(pp,0)) /( kappa0 + n);
-
-    }
-    kappa_post = n + kappa0;
-  }
-  arma::vec theta_samp(p); theta_samp.fill(-990);
-  double invkappa = 1.0/kappa_post;
-  theta_samp = (mvrnormArma(1, mu_post, invkappa*Sigmaj).row(0)).t();
-
-  return(theta_samp);
-
-}
 
 // [[Rcpp::depends(RcppArmadillo)]]
 arma::vec update_thetaj_ind_mcmc(const arma::mat YP, const arma::mat Sigmaj_inv, const arma::vec mu0, const arma::mat B_inv)
@@ -377,25 +286,6 @@ arma::mat update_theta_ind_mcmc(const arma::mat YP, const arma::vec s, const int
 
 }
 
-// [[Rcpp::depends(RcppArmadillo)]]
-// [[Rcpp::export]]
-arma::mat update_theta_mcmc(const arma::mat YP, const arma::vec s, const int K, const arma::cube Sigma, const arma::vec mu0, const double kappa0)
-{
-  int p = YP.n_cols;
-  arma::mat out(K,p);
-  arma::vec nvec(K); nvec = nvec_count(s,K);
-
-
-  for( int k=0; k<K; k++)
-  {
-    arma::uvec ind = find(s==k+1);
-    arma::mat YYk(nvec(k),p); YYk=YP.rows(ind);
-    out.row(k) = update_thetaj_mcmc(YYk, Sigma.slice(k),mu0,kappa0).t();
-  }
-
-  return(out);
-
-}
 
 // [[Rcpp::depends(RcppArmadillo)]]
 // [[Rcpp::export]]

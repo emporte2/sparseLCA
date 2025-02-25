@@ -12,6 +12,7 @@
 #'
 #'
 #' @importFrom tmvtnorm rtmvnorm
+#' @importFrom mvtnorm rmvnorm
 #' @importFrom Rcpp evalCpp
 #' @importFrom GeneralizedHyperbolic rgig
 #' @useDynLib sparselca
@@ -19,7 +20,7 @@
 #' @export
 lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
                          prior.list, tuning.list, Rvec=NULL, permute=TRUE, order.gamma=FALSE,
-                         update.theta=TRUE,update.Sigma=TRUE,update.lambda=TRUE,
+                         update.theta=TRUE,update.Sigma=TRUE,update.lambda=TRUE, update.mu=TRUE,
                          update.gamma=TRUE, update.e0=TRUE)
 {
   N <- nrow(YY)
@@ -38,6 +39,11 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
 
   # objects for prior hyperparameters
   mu.current <- prior.list$mu0 # will eventually be updated
+  if(update.mu)
+  {
+  m0 <- prior.list$m0
+  M <- prior.list$M
+  }
   #B0 <- prior.list$B0
   #e0 <- prior.list$e
   ae.0 <- prior.list$ae
@@ -109,11 +115,11 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
     lambda.current <- prior.list$lambda
     Lambda.temp <- diag(sqrt(lambda.current))
     B0.current <- Lambda.temp%*%diag(Rvec)%*%Lambda.temp
-    B0.current <- diag(Rvec)
   } else{
   B0.current <- diag(Rvec)
   lambda.current <-rep(1,J)
   }
+  B0.inv.current <- solve(B0.current)
 
   ## add everything else
   it <- 1
@@ -135,7 +141,7 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
     {
     # update theta
     theta.current <- update_theta_ind_mcmc(ystar.current,cv.current, C, Sigma.inv.current,
-                                           mu.current, B0.current) # takes precision matrix
+                                           mu.current, B0.inv.current) # takes precision matrix
 
     if(permute)
     {
@@ -171,6 +177,13 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
     lambda.current <- update_lambda(theta.current, mu.current, C, Rvec, nu1, nu2)
     Lambda <- diag(sqrt(lambda.current))
     B0.current <- Lambda%*%diag(Rvec)%*%Lambda
+    Lambda.i <- diag(sqrt(1/lambda.current))
+    B0.inv.current <- Lambda.i%*%diag(1/Rvec)%*%Lambda.i
+    }
+
+    if(update.mu)
+    {
+    mu.current <- mvtnorm::rmvnorm(1,apply(theta.current,2,mean), (1/C)*B0.current)
     }
 
     if(update.Sigma)

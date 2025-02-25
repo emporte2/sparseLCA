@@ -350,22 +350,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// update_theta_mcmc
-arma::mat update_theta_mcmc(const arma::mat YP, const arma::vec s, const int K, const arma::cube Sigma, const arma::vec mu0, const double kappa0);
-RcppExport SEXP _sparselca_update_theta_mcmc(SEXP YPSEXP, SEXP sSEXP, SEXP KSEXP, SEXP SigmaSEXP, SEXP mu0SEXP, SEXP kappa0SEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::mat >::type YP(YPSEXP);
-    Rcpp::traits::input_parameter< const arma::vec >::type s(sSEXP);
-    Rcpp::traits::input_parameter< const int >::type K(KSEXP);
-    Rcpp::traits::input_parameter< const arma::cube >::type Sigma(SigmaSEXP);
-    Rcpp::traits::input_parameter< const arma::vec >::type mu0(mu0SEXP);
-    Rcpp::traits::input_parameter< const double >::type kappa0(kappa0SEXP);
-    rcpp_result_gen = Rcpp::wrap(update_theta_mcmc(YP, s, K, Sigma, mu0, kappa0));
-    return rcpp_result_gen;
-END_RCPP
-}
 // log_e0_gamma_ratio
 double log_e0_gamma_ratio(double e0, double e0_old, arma::vec gamma, const int Kbig);
 RcppExport SEXP _sparselca_log_e0_gamma_ratio(SEXP e0SEXP, SEXP e0_oldSEXP, SEXP gammaSEXP, SEXP KbigSEXP) {
@@ -493,7 +477,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_sparselca_update_class_probs_mvn_cp", (DL_FUNC) &_sparselca_update_class_probs_mvn_cp, 5},
     {"_sparselca_sample_S_mvn_mcmc", (DL_FUNC) &_sparselca_sample_S_mvn_mcmc, 5},
     {"_sparselca_update_theta_ind_mcmc", (DL_FUNC) &_sparselca_update_theta_ind_mcmc, 6},
-    {"_sparselca_update_theta_mcmc", (DL_FUNC) &_sparselca_update_theta_mcmc, 6},
     {"_sparselca_log_e0_gamma_ratio", (DL_FUNC) &_sparselca_log_e0_gamma_ratio, 4},
     {"_sparselca_log_eqd1_ratio", (DL_FUNC) &_sparselca_log_eqd1_ratio, 4},
     {"_sparselca_log_prior_ratio", (DL_FUNC) &_sparselca_log_prior_ratio, 4},

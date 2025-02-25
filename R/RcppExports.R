@@ -105,10 +105,6 @@ update_theta_ind_mcmc <- function(YP, s, K, Sigma, mu0, B_inv) {
     .Call(`_sparselca_update_theta_ind_mcmc`, YP, s, K, Sigma, mu0, B_inv)
 }
 
-update_theta_mcmc <- function(YP, s, K, Sigma, mu0, kappa0) {
-    .Call(`_sparselca_update_theta_mcmc`, YP, s, K, Sigma, mu0, kappa0)
-}
-
 log_e0_gamma_ratio <- function(e0, e0_old, gamma, Kbig) {
     .Call(`_sparselca_log_e0_gamma_ratio`, e0, e0_old, gamma, Kbig)
 }
