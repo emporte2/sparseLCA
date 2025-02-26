@@ -38,11 +38,15 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
   B <- t(apply(YY,1,function(x){out <- rep(Inf,J); out[which(x==0)] <- 0; out}))
 
   # objects for prior hyperparameters
-  mu.current <- prior.list$mu0 # will eventually be updated
   if(update.mu)
   {
   m0 <- prior.list$m0
   M <- prior.list$M
+  mu.current <- m0
+  } else
+  {
+    mu.current <- prior.list$mu0
+
   }
   #B0 <- prior.list$B0
   #e0 <- prior.list$e
@@ -64,6 +68,7 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
   ystar.samples <- array(NA,dim=c(nit,N,J))
   c.samples <- matrix(NA, nrow=nit,ncol=N) # latent allocations
   theta.samples <- array(NA, dim=c(nit,C,J))
+  mu.samples <- matrix(NA, nrow=nit, ncol=J)
   Sigma.inv.samples <- array(NA, dim=c(nit,J,J,C))
   Sigma.samples <- array(NA, dim=c(nit,J,J,C))
   cplus.samples <- matrix(NA, nrow=nit) # latent allocations
@@ -216,6 +221,7 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
         cplus.samples[it/nthin] <- cplus.current
         ystar.samples[it/nthin,,] <- ystar.current
         theta.samples[it/nthin,,] <- theta.current
+        mu.samples[it/nthin,] <- mu.current
         Sigma.inv.samples[it/nthin,,,] <- Sigma.inv.current
         Sigma.samples[it/nthin,,,] <- Sigma.current
         e0.samples[it/nthin,] <- e0.current.s
@@ -229,5 +235,6 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
   }
   return(list(c=c.samples, gamma=gamma.samples, pi=pi.samples,
               cplus=cplus.samples, ystar=ystar.samples, theta=theta.samples,
+              mu = mu.samples,
               Sigma=Sigma.samples, e0=e0.samples))
 }
