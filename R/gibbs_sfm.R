@@ -38,16 +38,13 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
   B <- t(apply(YY,1,function(x){out <- rep(Inf,J); out[which(x==0)] <- 0; out}))
 
   # objects for prior hyperparameters
-  if(update.mu)
+  if(update.mu & is.null(prior.list$mu0))
   {
-  m0 <- prior.list$m0
-  M <- prior.list$M
-  mu.current <- m0
-  } else
-  {
-    mu.current <- prior.list$mu0
-
-  }
+   mu.current <- qnorm(apply(YY,2,mean)+1e-10) # data dependent start value if unspecified
+   } else
+   {
+     mu.current <- prior.list$mu0
+   }
   #B0 <- prior.list$B0
   #e0 <- prior.list$e
   ae.0 <- prior.list$ae
@@ -137,8 +134,7 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
     {
       ci <- cv.current[i]
       ystar <- tmvtnorm::rtmvnorm(1, mean=theta.current[ci,],sigma=Sigma.current[,,ci],
-                        lower=A[i,],upper=B[i,],algorithm = "gibbs",burn.in=10,thinning=5)
-
+                        lower=A[i,],upper=B[i,],algorithm = "gibbs")
       ystar.current[i,] <- ystar
     }
 
