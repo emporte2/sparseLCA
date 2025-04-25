@@ -19,9 +19,9 @@
 #'
 #' @export
 lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
-                         prior.list, tuning.list, Rvec=NULL, permute=TRUE, order.gamma=FALSE,
-                         update.theta=TRUE,update.Sigma=TRUE,update.lambda=TRUE, update.mu=TRUE,
-                         update.gamma=TRUE, update.e0=TRUE)
+                         prior.list, tuning.list, permute=TRUE, order.gamma=FALSE,
+                         update.theta=TRUE,update.Sigma=FALSE,update.lambda=TRUE, update.mu=TRUE,
+                         update.gamma=TRUE, update.e0=TRUE, update.D0=FALSE)
 {
   N <- nrow(YY)
   J <- ncol(YY)
@@ -37,29 +37,8 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
   A <- t(apply(YY,1,function(x){out <- rep(-Inf,J); out[which(x==1)] <- 0; out}))
   B <- t(apply(YY,1,function(x){out <- rep(Inf,J); out[which(x==0)] <- 0; out}))
 
-  # objects for prior hyperparameters
-  if(update.mu & is.null(prior.list$mu0))
-  {
-   mu.current <- qnorm(apply(YY,2,mean)+1e-10) # data dependent start value if unspecified
-   } else
-   {
-     mu.current <- prior.list$mu0
-   }
-  #B0 <- prior.list$B0
-  #e0 <- prior.list$e
-  ae.0 <- prior.list$ae
-  if(is.null(prior.list$be))
-  {
-  be.0 <- ae.0*C^2 # originally ae.0*C: testing a higher b
-  } else
-  {
-    be.0 <- prior.list$be
-  }
-  nu1 <- prior.list$nu1
-  nu2 <- prior.list$nu2
   delta.e0 <- tuning.list$delta
-  d0 <- 2.5 + (J-1)/2
-  D0 <- prior.list$D0
+
 
   # create objects to store results
   ystar.samples <- array(NA,dim=c(nit,N,J))
@@ -79,49 +58,30 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
   # initialize parameters
   cv.current <- sample(1:C,size=N,replace=TRUE)
   nv.current <- count_classes(cv.current,C)
-  Sigma.inv.current <- array(NA, dim=c(J,J,C))
-  for(c in 1:C)
-  {
-    Sigma.inv.current[,,c] <- diag(rep(1,J)) # identity is default value
-  }
-  Sigma.current <- array(NA, dim=c(J,J,C))
-  for(c in 1:C)
-  {
-    Sigma.current[,,c] <- Sigma.inv.current[,,c]
-  }
-
-  if(is.null(prior.list$e0))
-  {
-  e0.current.s <- c(rgamma(1,ae.0, rate=be.0),0)
-  e0.current <- e0.current.s[1]
-  } else{
-    e0.current.s <- c(1/C,0)
-    e0.current <- e0.current.s[1]
-  }
-
-  if(!update.gamma)
-  {
-    gamma.current <- rep(1/C,C)
-  }
+  ystar.current <- matrix(rnorm(n*J), nrow=n,ncol=J)
 
 
-  theta.current <- matrix(rnorm(J*C),nrow=C,ncol=J)
-  if(!update.theta)
-  {
-    theta.current <- matrix(rep(qnorm(apply(YY,2,mean)),C),nrow=C,ncol=J,byrow=TRUE)
-  }
-  ystar.current <- matrix(rnorm(N*J),nrow=N,ncol=J)
+  hyp <- default.hyp(prior.list, YY,C)
+  be.0 <- hyp$be0
+  ae.0 <- hyp$ae0
+  e0.current <- hyp$e0
+  d0 <- hyp$d0
+  D0.current <- hyp$D0
+  g0 <- hyp$g0
+  G0 <- hyp$G0
+  lambda.current <- hyp$lambda
+  r0.vec <- hyp$r0.vec
+  nu1 <- hyp$nu1
+  nu2 <- hyp$nu2
+  Sigma.current <- hyp$Sigma
+  Sigma.inv.current <- hyp$Sigma.inv
+  theta.current <- hyp$theta
+  gamma.current <- hyp$gamma
+  mu.current <- hyp$mu
+  B0.current <- hyp$B
+  B0.inv.current <- solve(hyp$B)
 
-  if(!is.null(prior.list$lambda))
-  {
-    lambda.current <- prior.list$lambda
-    Lambda.temp <- diag(sqrt(lambda.current))
-    B0.current <- Lambda.temp%*%diag(Rvec)%*%Lambda.temp
-  } else{
-  B0.current <- diag(Rvec)
-  lambda.current <-rep(1,J)
-  }
-  B0.inv.current <- solve(B0.current)
+
 
   ## add everything else
   it <- 1
@@ -130,13 +90,7 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
   while( it/nthin <= nit)
   {
     # update y star
-    for(i in 1:N)
-    {
-      ci <- cv.current[i]
-      ystar <- tmvtnorm::rtmvnorm(1, mean=theta.current[ci,],sigma=Sigma.current[,,ci],
-                        lower=A[i,],upper=B[i,],algorithm = "gibbs")
-      ystar.current[i,] <- ystar
-    }
+    ystar.current <- update_ystar(theta.current, Sigma.current, A,B, cv.current)
 
     if(update.theta)
     {
@@ -149,7 +103,6 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
       theta.current <- theta.current[sample(1:C,C),]
     }
     }
-    # could write a function here to transform thetas into pi's for FYI
 
     if(update.gamma)
     {
@@ -175,11 +128,11 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
     # update B matrix - coming soon
     if(update.lambda)
     {
-    lambda.current <- update_lambda(theta.current, mu.current, C, Rvec, nu1, nu2)
+    lambda.current <- update_lambda(theta.current, mu.current, C, r0.vec, nu1, nu2)
     Lambda <- diag(sqrt(lambda.current))
-    B0.current <- Lambda%*%diag(Rvec)%*%Lambda
+    B0.current <- Lambda%*%diag(r0.vec)%*%Lambda
     Lambda.i <- diag(sqrt(1/lambda.current))
-    B0.inv.current <- Lambda.i%*%diag(1/Rvec)%*%Lambda.i
+    B0.inv.current <- Lambda.i%*%diag(1/r0.vec)%*%Lambda.i
     }
 
     if(update.mu)
@@ -195,6 +148,10 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
     {
       Sigma.current[,,c] <- solve(Sigma.inv.current[,,c])
     }
+    if(update.D0)
+    {
+      D0 <- rWishart(1, df=g0+C*d0, Sigma=G0+apply(Sigma.inv.current,2:3,sum))[,,1]
+    }
     }
 
     if(update.e0)
@@ -209,7 +166,7 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
       if(it%%nthin==0)
       {
 
-        #cat("iteration:",it/nthin,"\n")
+        cat("iteration:",it/nthin,"\n")
 
         c.samples[it/nthin,] <- cv.current
         gamma.samples[it/nthin,] <- gamma.current
