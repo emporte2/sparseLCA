@@ -194,7 +194,7 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin=1, nburn, nchain=1,
     }
     it2 <- it2+1
   }
-  cat("chain:",ch," of ", nchain,"\n")
+  cat("chain:",ch," of ", nchain," complete. \n")
 
   }
   return(list(c=c.samples, gamma=gamma.samples, pi=pi.samples,
