@@ -3,9 +3,10 @@
 #'
 #' @param YY Numeric matrix with n rows J columns.
 #' @param C integer; number of classes
-#' @param nit integer; number of iteractions after burnin, thin
+#' @param nit integer; number of iterations across chains after burnin, thin
 #' @param nthin integer; number of samples to thin
 #' @param nburn integer; number of burn-in samples
+#' @param nchain integer; number of chains
 #' @param prior.list list with all prior hyperparameters
 #' @param tuning.list list will all tuning parameters
 #' @return list with all posterior samples
@@ -18,13 +19,18 @@
 #' @useDynLib sparselca
 #'
 #' @export
-lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
+lca_mcmc_sfm <- function(YY,  C, nit, nthin=1, nburn, nchain=1,
                          prior.list, tuning.list, permute=TRUE, order.gamma=FALSE,
                          update.theta=TRUE,update.Sigma=FALSE,update.lambda=TRUE, update.mu=TRUE,
                          update.gamma=TRUE, update.e0=TRUE, update.D0=FALSE)
 {
   N <- nrow(YY)
   J <- ncol(YY)
+
+  nit.per.chain <- floor(nit/nchain)
+  nit <- nit.per.chain*nchain
+  cat("Total iterations split among ",nchain, " chains:", nit,
+      "\n iterations per chain: ",nit.per.chain, "\n")
 
   if(permute & order.gamma)
   {
@@ -55,6 +61,8 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
   pi.samples <- array(NA, dim=c(nit, C,J))
   kplus.samples <- rep(NA,nit) # number of non empty components
 
+  for( ch in 1:nchain)
+  {
   # initialize parameters
   cv.current <- sample(1:C,size=N,replace=TRUE)
   nv.current <- count_classes(cv.current,C)
@@ -87,7 +95,7 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
   it <- 1
   it2 <- 1
 
-  while( it/nthin <= nit)
+  while( it/nthin <= nit.per.chain)
   {
     # update y star
     ystar.current <- update_ystar(theta.current, Sigma.current, A,B, cv.current)
@@ -166,25 +174,28 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin, nburn,
       if(it%%nthin==0)
       {
 
-        cat("iteration:",it/nthin,"\n")
 
-        c.samples[it/nthin,] <- cv.current
-        gamma.samples[it/nthin,] <- gamma.current
-        pi.samples[it/nthin,,] <- pnorm(theta.current)
-        cplus.samples[it/nthin] <- cplus.current
-        ystar.samples[it/nthin,,] <- ystar.current
-        theta.samples[it/nthin,,] <- theta.current
-        mu.samples[it/nthin,] <- mu.current
-        Sigma.inv.samples[it/nthin,,,] <- Sigma.inv.current
-        Sigma.samples[it/nthin,,,] <- Sigma.current
-        e0.samples[it/nthin,] <- e0.current.s
-        lambda.samples[it/nthin,] <- lambda.current
+
+        c.samples[nit.per.chain*(ch-1) + it/nthin,] <- cv.current
+        gamma.samples[nit.per.chain*(ch-1) + it/nthin,] <- gamma.current
+        pi.samples[nit.per.chain*(ch-1) + it/nthin,,] <- pnorm(theta.current)
+        cplus.samples[nit.per.chain*(ch-1) + it/nthin] <- cplus.current
+        ystar.samples[nit.per.chain*(ch-1) + it/nthin,,] <- ystar.current
+        theta.samples[nit.per.chain*(ch-1) + it/nthin,,] <- theta.current
+        mu.samples[nit.per.chain*(ch-1) + it/nthin,] <- mu.current
+        Sigma.inv.samples[nit.per.chain*(ch-1) + it/nthin,,,] <- Sigma.inv.current
+        Sigma.samples[nit.per.chain*(ch-1) + it/nthin,,,] <- Sigma.current
+        e0.samples[nit.per.chain*(ch-1) + it/nthin,] <- e0.current.s
+        lambda.samples[nit.per.chain*(ch-1) + it/nthin,] <- lambda.current
 
 
       }
       it <- it+1
     }
     it2 <- it2+1
+  }
+  cat("chain:",ch," of ", nchain,"\n")
+
   }
   return(list(c=c.samples, gamma=gamma.samples, pi=pi.samples,
               cplus=cplus.samples, ystar=ystar.samples, theta=theta.samples,
