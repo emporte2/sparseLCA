@@ -66,7 +66,7 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin=1, nburn, nchain=1,
   # initialize parameters
   cv.current <- sample(1:C,size=N,replace=TRUE)
   nv.current <- count_classes(cv.current,C)
-  ystar.current <- matrix(rnorm(n*J), nrow=n,ncol=J)
+  ystar.current <- matrix(rnorm(N*J), nrow=N,ncol=J)
 
 
   hyp <- default.hyp(prior.list, YY,C)
