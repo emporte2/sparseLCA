@@ -42,6 +42,9 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin=1, nburn, nchain=1,
   B <- rep(Inf,nrow=N,ncol=J)
   A <- t(apply(YY,1,function(x){out <- rep(-Inf,J); out[which(x==1)] <- 0; out}))
   B <- t(apply(YY,1,function(x){out <- rep(Inf,J); out[which(x==0)] <- 0; out}))
+  # start value that obeys truncation
+  ystar.current <- t(qnorm(apply(YY, 1, function(x){x2 <- x; x2[x==0] <- x[x==0]+0.01;
+  x2[x==1] <- x[x==1]-0.01; x2})))
 
   delta.e0 <- tuning.list$delta
 
@@ -56,6 +59,7 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin=1, nburn, nchain=1,
   cplus.samples <- matrix(NA, nrow=nit) # latent allocations
   e0.samples <- matrix(NA,nrow=nit,ncol=2)
   lambda.samples <- matrix(NA, nrow=nit, ncol=J)
+  times.samples<-matrix(NA, nrow=nit, ncol=2)
 
   gamma.samples <- matrix(NA, nrow=nit,ncol=C) # mixture weights
   pi.samples <- array(NA, dim=c(nit, C,J))
@@ -98,7 +102,11 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin=1, nburn, nchain=1,
   while( it/nthin <= nit.per.chain)
   {
     # update y star
-    ystar.current <- update_ystar(theta.current, Sigma.current, A,B, cv.current)
+     t1 <- Sys.time()
+     #ystar.current <- update_Ystar_mcmc(cv.current, theta.current, Sigma.current,
+    #                   A,B)
+     ystar.current <- update_ystar(theta.current, Sigma.current, A,B, cv.current, ystar.current)
+     t.ystar <- Sys.time()-t1
 
     if(update.theta)
     {
@@ -118,7 +126,7 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin=1, nburn, nchain=1,
     gamma.current <- update_eta(C, cv.current, e0.current[1])
     if(order.gamma)
     {
-      gamma.current <- sort(gamma.current)
+      gamma.current <- sort(gamma.current,decreasing=TRUE)
     }
     }
 
@@ -168,6 +176,7 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin=1, nburn, nchain=1,
     e0.current.s <- update_e0(e0.current, gamma.current, C, delta=delta.e0, ae.0, be.0)
     e0.current <- e0.current.s[1]
     }
+    t.fullit <- Sys.time()-t1
 
     if(it2 > nburn)
     {
@@ -187,6 +196,7 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin=1, nburn, nchain=1,
         Sigma.samples[nit.per.chain*(ch-1) + it/nthin,,,] <- Sigma.current
         e0.samples[nit.per.chain*(ch-1) + it/nthin,] <- e0.current.s
         lambda.samples[nit.per.chain*(ch-1) + it/nthin,] <- lambda.current
+        times.samples[nit.per.chain*(ch-1) + it/nthin,] <- c(t.ystar,t.fullit)
 
 
       }
@@ -200,5 +210,5 @@ lca_mcmc_sfm <- function(YY,  C, nit, nthin=1, nburn, nchain=1,
   return(list(c=c.samples, gamma=gamma.samples, pi=pi.samples,
               cplus=cplus.samples, ystar=ystar.samples, theta=theta.samples,
               mu = mu.samples,
-              Sigma=Sigma.samples, e0=e0.samples))
+              Sigma=Sigma.samples, e0=e0.samples, times=times.samples))
 }
