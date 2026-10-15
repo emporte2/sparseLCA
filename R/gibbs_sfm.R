@@ -12,7 +12,7 @@
 #' @return list with all posterior samples
 #'
 #'
-#' @importFrom tmvtnorm rtmvnorm
+#' @importFrom truncnorm rtruncnorm
 #' @importFrom mvtnorm rmvnorm
 #' @importFrom Rcpp evalCpp
 #' @importFrom GeneralizedHyperbolic rgig
