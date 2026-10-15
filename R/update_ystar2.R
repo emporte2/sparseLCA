@@ -1,5 +1,4 @@
-update_ystar <- function(theta.current, Sigma.current,A,B,c.current,
-                         ystar.previous)
+update_ystar <- function(theta.current, Sigma.current,A,B,c.current)
 {
   N <- nrow(A)
   ystar.current <- matrix(NA, nrow=N,ncol=ncol(A))
