@@ -1,3 +1,4 @@
+
 update_ystar <- function(theta.current, Sigma.current,A,B,c.current, ystar.previous)
 {
   N <- nrow(A)
@@ -22,7 +23,7 @@ update_ystar <- function(theta.current, Sigma.current,A,B,c.current, ystar.previ
      for(j in 1:J)
      {
        mean1 <- theta.current[ci,j] + mult.mean[c,j,]%*%(ystar.current[i,-j] - theta.current[ci,-j])
-       ystar.current[i,j] <- rtruncnorm(1, a=A[i,j], b=B[i,j], mean = mean1, sd = sqrt(conditional.sig[c,j]))
+       ystar.current[i,j] <- truncnorm::rtruncnorm(1, a=A[i,j], b=B[i,j], mean = mean1, sd = sqrt(conditional.sig[c,j]))
      }
 
    }
