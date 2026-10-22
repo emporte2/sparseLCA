@@ -68,7 +68,7 @@ if(update.theta)
 
 }
   # initialize theta from data
-  theta <- matrix(rep(qnorm(apply(Y,2,mean)),C),nrow=C,ncol=J,byrow=TRUE)
+  theta <- matrix(rep(qnorm(pmax(apply(Y,2,mean),1e-7)),C),nrow=C,ncol=J,byrow=TRUE)
 # set hyperparameters for Sigma updates
 if(update.Sigma)
 {
